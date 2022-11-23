@@ -5,7 +5,7 @@ import json
 from . import codes
 from swgateway.crypto import SWCryptoMgr
 
-async def LoginV2(conn):
+async def LoginV2Req(conn):
     request_buffer =  struct.pack(">H", codes.LOGIN_V2_REQ)
     request_buffer += struct.pack(">L", 1)
     request_buffer += struct.pack(">Q", conn.WIZARD.HIVE_USER.HIVE_UID)
@@ -27,7 +27,7 @@ def LoginV2Res(packet):
         "channel": int.from_bytes(packet[10:14], byteorder='big'),
     }
 
-async def GroupChange(conn, channel):
+async def GroupChangeReq(conn, channel):
     await conn.wait_for_login()
 
     request_buffer =  struct.pack(">H", codes.GROUP_CHANGE_REQ)
@@ -48,7 +48,7 @@ def GroupChangeRes(packet):
         "channel": int.from_bytes(packet[6:10], byteorder='big'),
     }
 
-async def Ping(conn):
+async def PingReq(conn):
     request_buffer =  struct.pack(">H", codes.PING_REQ)
     request_buffer += struct.pack(">Q", conn.WIZARD.HIVE_USER.HIVE_UID)
     request_buffer += struct.pack(">L", 0)
@@ -66,7 +66,7 @@ def PingRes(packet):
         "raw": packet,
     }
 
-def UserChat(conn):
+async def UserChatReq(conn):
     pass
 
 def UserChatNotify(packet):

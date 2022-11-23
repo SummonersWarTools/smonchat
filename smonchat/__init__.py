@@ -38,7 +38,7 @@ async def join(wizard, channel=1123, nickname=None):
     conn = ChatConnection(wizard, chat_data['data']['chat_server']['ip'], chat_data['data']['chat_server']['port'], chat_data['data']['chat_server']['game_server_id'], chat_data['data']['chat_server']['login_key'])
     logging.info(f"Chat connection is {conn.CHAT_SERVER_IP}:{conn.CHAT_SERVER_PORT}")
     # prep a LOGIN_REQ_V2 packet for send
-    await packet.LoginV2(conn)
+    await packet.LoginV2Req(conn)
 
     # open connection to the chat server
     reader, writer = await asyncio.open_connection(conn.CHAT_SERVER_IP, conn.CHAT_SERVER_PORT)
@@ -49,7 +49,7 @@ async def join(wizard, channel=1123, nickname=None):
     conn.producer = asyncio.create_task(_producer(conn, writer))
     conn.timer    = asyncio.create_task(_timer(conn))
 
-    await packet.GroupChange(conn, channel)
+    await packet.GroupChangeReq(conn, channel)
 
     return conn
 
@@ -99,7 +99,7 @@ async def _timer(conn):
     logging.debug("Initialized ping timer task")
     # loop to send ping requests
     while True:
-        await packet.Ping(conn)
+        await packet.PingReq(conn)
         await asyncio.sleep(10)
 
 class ChatConnection:
