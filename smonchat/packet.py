@@ -66,8 +66,35 @@ def PingRes(packet):
         "raw": packet,
     }
 
-async def UserChatReq(conn):
-    pass
+async def UserChatReq(conn, message, nickname):
+    data_json = {
+        "chat_version": 10001,
+        "chat_type": 3,
+        "chat_wizard_name": nickname,
+        "chat_hub_uid": 0,
+        "chat_is_guest": 1,
+        "chat_wizard_uid": conn.WIZARD.WIZARD_ID,
+        "chat_wizard_level": 1,
+        "chat_wizard_rep_id": 0,
+        "chat_wizard_rep_rarity": 1,
+        "chat_wizard_rating_id": 1001,
+        "chat_wizard_mentor_count": 0,
+        "chat_wizard_mentee_count": 0,
+        "chat_wizard_mentor_volunteer": 0,
+        "server_type": 4,
+        "chat_message": message 
+    }
+    data_encrypted = b64encode(SWCryptoMgr.Encrypt(SWCryptoMgr.CHAT, json.dumps(data_json)))
+    data_len = len(data_encrypted)
+    
+    request_buffer =  struct.pack(">H", codes.USER_CHAT_REQ)
+    request_buffer += struct.pack(">H", data_len)
+    request_buffer += data_encrypted
+
+    buffer_len = len(request_buffer) + 2
+    request_buffer = struct.pack(">H", buffer_len) + request_buffer
+
+    await conn.send(request_buffer)
 
 def UserChatNotify(packet):
     data_len = int.from_bytes(packet[2:4], byteorder='big')
