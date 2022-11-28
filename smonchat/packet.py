@@ -23,7 +23,7 @@ def LoginV2Res(packet):
     return {
         "type": codes.LOGIN_V2_RES,
         "raw": packet,
-        "login_id": int.from_bytes(packet[6:10], byteorder='big'),
+        "login_id": int.from_bytes(packet[2:10], byteorder='big'),
         "channel": int.from_bytes(packet[10:14], byteorder='big'),
     }
 
@@ -51,8 +51,7 @@ def GroupChangeRes(packet):
 async def PingReq(conn):
     request_buffer =  struct.pack(">H", codes.PING_REQ)
     request_buffer += struct.pack(">Q", conn.WIZARD.HIVE_USER.HIVE_UID)
-    request_buffer += struct.pack(">L", 0)
-    request_buffer += struct.pack(">L", conn.CHAT_LOGIN_ID)
+    request_buffer += struct.pack(">Q", conn.CHAT_LOGIN_ID)
     request_buffer += struct.pack(">L", 1)
 
     buffer_len = len(request_buffer) + 2
@@ -88,6 +87,8 @@ async def UserChatReq(conn, message, nickname):
     data_len = len(data_encrypted)
     
     request_buffer =  struct.pack(">H", codes.USER_CHAT_REQ)
+    request_buffer += struct.pack(">Q", conn.WIZARD.HIVE_USER.HIVE_UID)
+    request_buffer += struct.pack(">Q", conn.CHAT_LOGIN_ID)
     request_buffer += struct.pack(">H", data_len)
     request_buffer += data_encrypted
 
