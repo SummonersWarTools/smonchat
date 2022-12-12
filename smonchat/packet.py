@@ -1,5 +1,5 @@
 import struct
-from base64 import b64decode
+from base64 import b64decode, b64encode
 import json
 
 from . import codes
@@ -70,11 +70,11 @@ async def UserChatReq(conn, message, nickname):
         "chat_version": 10001,
         "chat_type": 3,
         "chat_wizard_name": nickname,
-        "chat_hub_uid": 0,
+        "chat_hub_uid": conn.WIZARD.HIVE_USER.HIVE_UID,
         "chat_is_guest": 1,
         "chat_wizard_uid": conn.WIZARD.WIZARD_ID,
-        "chat_wizard_level": 1,
-        "chat_wizard_rep_id": 0,
+        "chat_wizard_level": conn.WIZARD_INFO['wizard_level'],
+        "chat_wizard_rep_id": conn.WIZARD_INFO['rep_unit_id'],
         "chat_wizard_rep_rarity": 1,
         "chat_wizard_rating_id": 1001,
         "chat_wizard_mentor_count": 0,
@@ -83,14 +83,15 @@ async def UserChatReq(conn, message, nickname):
         "server_type": 4,
         "chat_message": message 
     }
-    data_encrypted = b64encode(SWCryptoMgr.Encrypt(SWCryptoMgr.CHAT, json.dumps(data_json)))
-    data_len = len(data_encrypted)
+    data_encrypted = b64encode(SWCryptoMgr.Encrypt(SWCryptoMgr.CHAT, json.dumps(data_json).encode("utf-8")))
+    data_len = len(data_encrypted) + 1
     
     request_buffer =  struct.pack(">H", codes.USER_CHAT_REQ)
     request_buffer += struct.pack(">Q", conn.WIZARD.HIVE_USER.HIVE_UID)
     request_buffer += struct.pack(">Q", conn.CHAT_LOGIN_ID)
     request_buffer += struct.pack(">H", data_len)
     request_buffer += data_encrypted
+    request_buffer += struct.pack("B", 0)
 
     buffer_len = len(request_buffer) + 2
     request_buffer = struct.pack(">H", buffer_len) + request_buffer

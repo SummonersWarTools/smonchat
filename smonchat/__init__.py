@@ -1,7 +1,7 @@
-from hive.auth import HiveUser, HiveGuestUser
+from withhive.auth import HiveUser, HiveGuestUser
 from swgateway import regions
 from swgateway.wizard import WizardGuest
-from swgateway.api.gateway import GetChatServerInfo
+from swgateway.api.gateway import GetChatServerInfo, GetWizardInfo, SetWizardName
 
 from . import packet
 
@@ -31,12 +31,19 @@ def connect(guest, region = regions.GLOBAL):
 
 async def join(wizard, channel=1123, nickname=None):
     logging.info(f"Joining channel {channel} with user ID {wizard.WIZARD_ID}")
+
     # fetch chat server info
     chat_data = GetChatServerInfo(wizard)
     if chat_data['status'] != 200 or chat_data['data']['ret_code'] != 0: raise Exception(f"failed to fetch chat server info from API, status={chat_data['status']}, return={chat_data['data']['ret_code']}")
     # create chat connection
     conn = ChatConnection(wizard, chat_data['data']['chat_server']['ip'], chat_data['data']['chat_server']['port'], chat_data['data']['chat_server']['game_server_id'], chat_data['data']['chat_server']['login_key'])
     logging.info(f"Chat connection is {conn.CHAT_SERVER_IP}:{conn.CHAT_SERVER_PORT}")
+    # fetch wizard info
+    wizard_info = GetWizardInfo(wizard)
+    if wizard_info['status'] != 200 or wizard_info['data']['ret_code'] != 0: raise Exception(f"failed to fetch wizard info from API, status={wizard_info['status']}, return={wizard_info['data']['ret_code']}")
+    conn.WIZARD_INFO = wizard_info['data']['wizard_info']
+    # set nickname
+    if conn.WIZARD_INFO['wizard_name'] == '': SetWizardName(nickname)
     # prep a LOGIN_REQ_V2 packet for send
     await packet.LoginV2Req(conn)
 
@@ -104,6 +111,7 @@ async def _timer(conn):
 
 class ChatConnection:
     WIZARD = None
+    WIZARD_INFO = None
     CHAT_SERVER_IP = None
     CHAT_SERVER_PORT = None
     CHAT_GAME_SERVER_ID = None
