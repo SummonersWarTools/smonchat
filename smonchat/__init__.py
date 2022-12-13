@@ -3,7 +3,7 @@ from swgateway import regions
 from swgateway.wizard import WizardGuest
 from swgateway.api.gateway import GetChatServerInfo, GetWizardInfo, SetWizardName
 
-from . import packet
+from . import packet, utils
 
 import requests
 import json
@@ -43,7 +43,9 @@ async def join(wizard, channel=1123, nickname=None):
     if wizard_info['status'] != 200 or wizard_info['data']['ret_code'] != 0: raise Exception(f"failed to fetch wizard info from API, status={wizard_info['status']}, return={wizard_info['data']['ret_code']}")
     conn.WIZARD_INFO = wizard_info['data']['wizard_info']
     # set nickname
-    if conn.WIZARD_INFO['wizard_name'] == '': SetWizardName(nickname)
+    if conn.WIZARD_INFO['wizard_name'] == '': 
+        SetWizardName(nickname)
+        conn.WIZARD_INFO['wizard_name'] = nickname
     # prep a LOGIN_REQ_V2 packet for send
     await packet.LoginV2Req(conn)
 
@@ -67,18 +69,22 @@ async def receive(conn):
     packet_type = int.from_bytes(packet_data[:2], byteorder='big')
     # return the appropriate packet processing based on the response code
     # (this will fall back to just returning type + raw data for an unrecognized packet)
-    if   packet_type == codes.LOGIN_V2_RES:       return packet.LoginV2Res(packet_data)
-    elif packet_type == codes.GROUP_CHANGE_RES:   return packet.GroupChangeRes(packet_data)
-    elif packet_type == codes.PING_RES:           return packet.PingRes(packet_data)
-    elif packet_type == codes.USER_CHAT_NOTIFY:   return packet.UserChatNotify(packet_data)
-    elif packet_type == codes.SERVER_CHAT_NOTIFY: return packet.ServerChatNotify(packet_data)
+    if   packet_type == codes.LOGIN_V2_RES:         return packet.LoginV2Res(packet_data)
+    elif packet_type == codes.GROUP_CHANGE_RES:     return packet.GroupChangeRes(packet_data)
+    elif packet_type == codes.PING_RES:             return packet.PingRes(packet_data)
+    elif packet_type == codes.USER_CHAT_RES:        return packet.UserChatRes(packet_data)
+    elif packet_type == codes.USER_WHISPER_RES:     return packet.UserWhisperRes(packet_data)
+    elif packet_type == codes.USER_CHAT_NOTIFY:     return packet.UserChatNotify(packet_data)
+    elif packet_type == codes.USER_WHISPER_NOTIFY:  return packet.UserWhisperNotify(packet_data)
+    elif packet_type == codes.SERVER_CHAT_NOTIFY:   return packet.ServerChatNotify(packet_data)
     else: return { "type": packet_type, "raw": packet_data, "unhandled": True }
 
 # consumes packets from the TCP connection and writes them to the RECEIVE_QUEUE.
 async def _consumer(conn, reader):
     logging.debug("Initialized consumer task")
     # loop to process packets
-    while True:
+    packet_len = 1
+    while packet_len > 0:
         # read packet length first (always 2 bytes)
         packet_len = await reader.read(2)
         packet_len = int.from_bytes(packet_len, byteorder='big')
@@ -95,9 +101,10 @@ async def _consumer(conn, reader):
 async def _producer(conn, writer):
     logging.debug("Initialized producer task")
     # loop to process queue
-    while True:
+    while not writer.is_closing():
         packet_data = await conn.SEND_QUEUE.get()
         writer.write(packet_data)
+        await writer.drain()
         logging.info(f"Producer sent packet data as {binascii.hexlify(packet_data)}")
 
 # loops and sends a PING_REQ packet every 10s to maintain connectivity to the server.
