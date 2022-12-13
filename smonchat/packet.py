@@ -70,7 +70,7 @@ async def UserChatReq(conn, chat_type, chat_fields, nickname = None):
     data_json = {
         "chat_version": 10001,
         "chat_type": chat_type,
-        "chat_wizard_name": nickname,
+        "chat_wizard_name": nickname or conn.WIZARD_INFO['wizard_name'],
         "chat_hub_uid": conn.WIZARD.HIVE_USER.HIVE_UID,
         "chat_is_guest": 1,
         "chat_wizard_uid": conn.WIZARD.WIZARD_ID,
@@ -107,12 +107,10 @@ def UserChatRes(packet):
     }
 
 async def UserWhisperReq(conn, chat_type, chat_fields, target, nickname = None):
-    if nickname == None: nickname = conn.WIZARD_INFO['wizard_name']
-
     data_json = {
         "chat_version": 10001,
         "chat_type": chat_type,
-        "chat_wizard_name": nickname,
+        "chat_wizard_name": nickname or conn.WIZARD_INFO['wizard_name'],
         "chat_hub_uid": conn.WIZARD.HIVE_USER.HIVE_UID,
         "chat_is_guest": 1,
         "chat_wizard_uid": conn.WIZARD.WIZARD_ID,
